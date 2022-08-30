@@ -1,0 +1,228 @@
+#include <SoftwareSerial.h>
+
+SoftwareSerial Arduino_SoftwareSerial(5,6);
+#define ldrpin A2
+#define sensor_pin A0 
+
+//--------------------------------------------------
+//Declarations for EEPROM
+#include <Wire.h>    
+#define EEPROM_I2C_ADDRESS 0x50
+//#define disk1 0x50  
+unsigned int address = 0;
+
+//int ldrstate_ = 0;
+int temperature_ = 0;  // Temperature from NodeMcu
+int humidity_ = 0;     // Humidity from NodeMcu
+int soiltemp_ = 0;     // Soil Temp From NodeMcu
+float moisturePercentage_ = 0;    //   Soil Moisture from NodeMcu
+int adc_value;  //  Rain sensor pin value
+int percent_value;   //   Rain Sensor pin value in percent 
+//--------------------------------------------------
+char c;
+String dataIn;
+
+String moisturePercentage;              //moisture reading
+
+///String ldrstate;  // Test purpose Nodemcu to Arduino ldrstate data sending
+String temperature, humidity, soiltemp; // Nodemcu dataIn in String Format
+
+int8_t indexofA, indexofB, indexofC, indexofD;    // 4 sensors are read from Nodemcu to Arduino
+
+int ldr_state_arduino = 0;     // LdrSensor read from arduino itself
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+void setup() {
+  // put your setup code here, to run once:7
+  Wire.begin(); 
+  pinMode(ldrpin, INPUT);
+  pinMode(sensor_pin, INPUT);
+  Serial.begin(9600);
+  Arduino_SoftwareSerial.begin(9600);
+  
+
+}
+
+void loop() {
+
+  // Data sending to nodemcu
+  // put your main code here, to run repeatedly:
+  
+   while(Arduino_SoftwareSerial.available()>0)
+   {
+   Serial.println("Data Received from NodeMcu to Arduino");
+   c=Arduino_SoftwareSerial.read();
+   
+   if (c=='\n'){
+    break;}
+    else{
+      dataIn+=c; 
+    }
+    }
+  if (c=='\n')
+  {
+
+    
+    indexofA=dataIn.indexOf("A");
+    indexofB=dataIn.indexOf("B");
+    indexofC=dataIn.indexOf("C");
+    indexofD=dataIn.indexOf("D");
+    //indexofE=dataIn.indexOf("E");
+    
+    
+    //ldrstate=dataIn.substring(0,indexofA);
+    temperature=dataIn.substring(0,indexofA);
+    humidity=dataIn.substring(indexofA+1,indexofB);
+    soiltemp=dataIn.substring(indexofB+1,indexofC);
+    moisturePercentage=dataIn.substring(indexofC+1,indexofD);
+    
+    //int ldrstate_=ldrstate.toInt();
+    int temperature_=temperature.toInt();
+    int humidity_=humidity.toInt();
+    int soiltemp_=soiltemp.toInt();
+    int moisturePercentage_=moisturePercentage.toInt();
+    
+   
+    //Serial.println("ldrstate : ");
+    //Serial.println(ldrstate_);
+    Serial.println("temperature : "); 
+    Serial.println(temperature_);
+    Serial.println("humidity : ");
+    Serial.println(humidity_);
+    Serial.println("soiltemp : ") ;
+    Serial.println(soiltemp_);
+    Serial.println("moisturePercentage : ");
+    Serial.println(moisturePercentage_);
+    
+    
+    ldr_state_arduino=analogRead(ldrpin);
+
+    adc_value= analogRead(sensor_pin);
+    percent_value = map(adc_value,0,1023,100,0);
+    percent_value =percent_value/12;
+
+    Serial.print("Rain Level: "); 
+    Serial.print(percent_value); 
+    Serial.print("%  "); 
+
+
+    if (address<31999)
+    {
+      //Writing data into EEPROM
+      // For EEPROM data saving...
+      //-------------------------------------------------------------------
+      
+      Serial.println("Data Writing to EEPROM has Begun");
+      
+      writeAddress(address, (int)ldr_state_arduino);
+      
+      writeAddress(address+1, (int)temperature_);
+      
+      writeAddress(address+2, (int)humidity_);
+      
+      writeAddress(address+3, (int)soiltemp_);
+      
+      writeAddress(address+4, (int)moisturePercentage_);
+      
+      writeAddress(address+5, (int)percent_value);
+      
+      address+=6;
+      
+    }
+    if(address == 31999)
+    {
+      address = 0;
+      Serial.println("\nData overwriting has been started!!\n");
+    }
+    //-------------------------------------------------------------------
+    
+    //ldr_state_arduino=analogRead(ldrpin);
+    Serial.println("ldr_state_from_arduino");
+    Serial.println(ldr_state_arduino);
+    
+    Arduino_SoftwareSerial.print(ldr_state_arduino);                 Arduino_SoftwareSerial.print("A");
+    Arduino_SoftwareSerial.print(percent_value);                     Arduino_SoftwareSerial.print("B");
+    Arduino_SoftwareSerial.print("\n");
+    
+    //Serial.println("ldrstate : " + ldrstate);
+    Serial.println("temperature : " + temperature);
+    Serial.println("humidity : " + humidity);
+    Serial.println("soiltemp : " + soiltemp);
+    Serial.println("moisturePercentage : " + moisturePercentage);
+    
+    
+    c=0;
+    dataIn="";
+    }
+
+  delay(300);
+
+}
+
+void Parse_the_Data()
+{
+indexofA=dataIn.indexOf("A");
+indexofB=dataIn.indexOf("B");
+indexofC=dataIn.indexOf("C");
+indexofD=dataIn.indexOf("D");
+//indexofE=dataIn.indexOf("E");
+
+
+//ldrstate=dataIn.substring(0,indexofA);
+temperature=dataIn.substring(0,indexofA);
+humidity=dataIn.substring(indexofA+1,indexofB);
+soiltemp=dataIn.substring(indexofB+1,indexofC);
+moisturePercentage=dataIn.substring(indexofC+1,indexofD);
+
+//int ldrstate_=ldrstate.toInt();
+int temperature_=temperature.toInt();
+int humidity_=humidity.toInt();
+int soiltemp_=soiltemp.toInt();
+int moisturePercentage_=moisturePercentage.toInt();
+
+//Serial.println("ldrstate : ");
+//Serial.println(ldrstate_);
+Serial.println("temperature : "); 
+Serial.println(temperature_);
+Serial.println("humidity : ");
+Serial.println(humidity_);
+Serial.println("soiltemp : ") ;
+Serial.println(soiltemp_);
+Serial.println("moisturePercentage : ");
+Serial.println(moisturePercentage_);
+
+}
+
+void writeAddress(int address, byte val)
+{
+  Wire.beginTransmission(EEPROM_I2C_ADDRESS);
+  Wire.write((int)(address >> 8));   // MSB
+  Wire.write((int)(address & 0xFF)); // LSB
+  
+   
+  Wire.write(val);
+  Wire.endTransmission();
+
+  delay(5);
+}
+ 
+byte readAddress(int address)
+{
+  byte rData = 0xFF;
+  
+  Wire.beginTransmission(EEPROM_I2C_ADDRESS);
+  
+  Wire.write((int)(address >> 8));   // MSB
+  Wire.write((int)(address & 0xFF)); // LSB
+  Wire.endTransmission();  
+
+
+  Wire.requestFrom(EEPROM_I2C_ADDRESS, 1);  
+
+  rData =  Wire.read();
+
+  return rData;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
